@@ -7,11 +7,11 @@
     "category": "Extra Tools",
     # "live_test_url": "http://apps.it-projects.info/shop/product/DEMO-URL?version=12.0",
     "images": [],
-    "version": "11.0.1.0.0",
+    "version": "12.0.1.0.0",
     "application": False,
     "author": "IT-Projects LLC, Eugene Molotov",
     "support": "apps@it-projects.info",
-    "website": "https://apps.odoo.com/apps/modules/11.0/ir_attachment_google_cloud_storage/",
+    "website": "https://apps.odoo.com/apps/modules/12.0/ir_attachment_google_drive/",
     "license": "Other OSI approved licence",  # MIT
     # "price": 9.00,
     # "currency": "EUR",
