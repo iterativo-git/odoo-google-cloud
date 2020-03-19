@@ -18,47 +18,52 @@ class IrAttachment(models.Model):
 
     _inherit = "ir.attachment"
 
-    # это нагло скопировано с ir_attachment_url
-    @api.multi
-    def _filter_protected_attachments(self):
-        return self.filtered(
-            lambda r: r.res_model not in ["ir.ui.view", "ir.ui.menu"]
-            or not r.name.startswith("/web/content/")
-            or not r.name.startswith("/web/static/")
-        )
+    @api.model_create_multi
+    def create(self, vals_list):
+        try:
+            bucket = self.env["res.config.settings"].get_google_cloud_storage_bucket()
+        except Exception:
+            _logger.exception(
+                "Google Cloud Storage is not configured properly. Keeping attachments as usual"
+            )
+            return super(IrAttachment, self).create(vals_list)
 
-    def _inverse_datas(self):
-        our_records = self._filter_protected_attachments()
-
-        if our_records:
-            # make sure, you can use google drive
-            # otherwise - use default behaviour
-            try:
-                bucket = self.env["res.config.settings"].get_google_cloud_storage_bucket()
-            except Exception:
-                _logger.exception(
-                    "Google Cloud Storage is not configured properly. Keeping attachments as usual"
-                )
-                return super(IrAttachment, self)._inverse_datas()
-
-        for attach in our_records:
-            bin_value = base64.b64decode(attach.datas)
-            checksum = self._compute_checksum(bin_value)
-            fname = self._file_write_google_cloud_storage(bucket, bin_value, checksum)
-            vals = {
-                "file_size": len(bin_value),
-                "checksum": checksum,
-                "index_content": self._index(
-                    bin_value, attach.datas_fname, attach.mimetype
-                ),
-                "store_fname": fname,
-                "db_datas": False,
-                "type": "binary",
-                "datas_fname": attach.datas_fname,
-            }
-            super(IrAttachment, attach.sudo()).write(vals)
-
-        return super(IrAttachment, self - our_records)._inverse_datas()
+        # based on https://github.com/odoo/odoo/blob/fa852ba1c5707b71469c410063f338eef261ab2b/odoo/addons/base/models/ir_attachment.py#L506-L524
+        record_tuple_set = set()
+        for values in vals_list:
+            # remove computed field depending of datas
+            for field in ('file_size', 'checksum'):
+                values.pop(field, False)
+            values = self._check_contents(values)
+            if 'datas' in values:
+                # ===============
+                # check, if attachment must be saved as google drive attachment
+                # start
+                data = values.pop('datas')
+                mimetype = values.pop('mimetype')
+                if values.get("res_model") not in ["ir.ui.view", "ir.ui.menu"] and self._storage() != 'db' and data:
+                    bin_data = base64.b64decode(data) if data else b''
+                    checksum = self._compute_checksum(bin_data)
+                    values.update({
+                        'file_size': len(bin_data),
+                        'checksum': checksum,
+                        'index_content': self._index(bin_data, mimetype),
+                        'store_fname': self._file_write_google_cloud_storage(bucket, bin_data, checksum),
+                        'db_datas': False,
+                    })
+                else:
+                    values.update(self._get_datas_related_values(data, mimetype))
+                # end
+                # ===============
+            # 'check()' only uses res_model and res_id from values, and make an exists.
+            # We can group the values by model, res_id to make only one query when
+            # creating multiple attachments on a single record.
+            record_tuple = (values.get('res_model'), values.get('res_id'))
+            record_tuple_set.add(record_tuple)
+        for record_tuple in record_tuple_set:
+            (res_model, res_id) = record_tuple
+            self.check('create', values={'res_model':res_model, 'res_id':res_id})
+        return super(IrAttachment, self).create(vals_list)
 
     def _file_read(self, fname, bin_size=False):
         if not fname.startswith(PREFIX):
