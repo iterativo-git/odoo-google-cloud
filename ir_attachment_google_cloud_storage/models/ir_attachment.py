@@ -9,7 +9,6 @@ from odoo import api, models
 from odoo.tools import human_size
 
 _logger = logging.getLogger(__name__)
-_logger.setLevel(logging.DEBUG)
 
 PREFIX = "google_cloud_storage://"
 
