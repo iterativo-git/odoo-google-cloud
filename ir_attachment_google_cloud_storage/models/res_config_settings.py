@@ -6,20 +6,23 @@ from google.oauth2 import service_account
 from google.cloud import storage
 import json
 import os
+import logging
+
+_logger = logging.getLogger(__name__)
+
 
 GOOGLE_APPLICATION_CREDENTIALS = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
 GCS_BUCKETNAME = os.environ.get("GCS_BUCKETNAME")
+
+_logger.debug("1: {}".format(GOOGLE_APPLICATION_CREDENTIALS))
+_logger.debug("2: {}".format(GCS_BUCKETNAME))
 
 class ResConfigSettings(models.TransientModel):
 
     _inherit = "res.config.settings"
 
-    def _compute_is_in_env(self):
-        self.is_google_cloud_storage_credentials_in_env = bool(GOOGLE_APPLICATION_CREDENTIALS)
-        self.is_google_cloud_storage_bucket_in_env = bool(GCS_BUCKETNAME)
-
-    is_google_cloud_storage_credentials_in_env = fields.Boolean(compute=_compute_is_in_env, store=False)
-    is_google_cloud_storage_bucket_in_env = fields.Boolean(compute=_compute_is_in_env, store=False)
+    is_google_cloud_storage_credentials_in_env = fields.Boolean(store=False)
+    is_google_cloud_storage_bucket_in_env = fields.Boolean(store=False)
 
     google_cloud_storage_credentials = fields.Char(
         string="Google Application Credentials (for Google Cloud Storage)",
@@ -73,10 +76,15 @@ class ResConfigSettings(models.TransientModel):
         icp = self.env["ir.config_parameter"].sudo()
 
         res.update(
-            google_cloud_storage_credentials=icp.get_param(
+            is_google_cloud_storage_credentials_in_env = bool(GOOGLE_APPLICATION_CREDENTIALS),
+            is_google_cloud_storage_bucket_in_env = bool(GCS_BUCKETNAME),
+        )
+
+        res.update(
+            google_cloud_storage_credentials=GOOGLE_APPLICATION_CREDENTIALS or icp.get_param(
                 "google_cloud_storage.credentials", ""
             ),
-            google_cloud_storage_bucket=icp.get_param(
+            google_cloud_storage_bucket=GCS_BUCKETNAME or icp.get_param(
                 "google_cloud_storage.bucket", ""
             ),
         )

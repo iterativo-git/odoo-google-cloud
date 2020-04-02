@@ -9,7 +9,6 @@ from odoo import api, models
 from odoo.tools import human_size
 
 _logger = logging.getLogger(__name__)
-_logger.setLevel(logging.DEBUG)
 
 PREFIX = "google_cloud_storage://"
 
@@ -28,8 +27,6 @@ class IrAttachment(models.Model):
         )
 
     def _inverse_datas(self):
-        return super(IrAttachment, self)._inverse_datas()
-
         our_records = self._filter_protected_attachments()
 
         if our_records:
