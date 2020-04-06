@@ -14,7 +14,7 @@
                     <div class="o_setting_right_pane">
                         <label for="google_cloud_storage_credentials"/>
                         <field name="is_google_cloud_storage_credentials_in_env" attrs="{'invisible': 1}"/>
-                        <field name="google_cloud_storage_credentials" widget="text" attrs="{'invisible': [('is_google_cloud_storage_credentials_in_env', '=', True)]}"/>
+                        <field name="google_cloud_storage_credentials" widget="binary" attrs="{'invisible': [('is_google_cloud_storage_credentials_in_env', '=', True)]}"/>
                         <p attrs="{'invisible': [('is_google_cloud_storage_credentials_in_env', '=', False)]}">Defined in enviroment</p>
                     </div>
                     <div class="o_setting_left_pane">
@@ -24,6 +24,11 @@
                         <field name="is_google_cloud_storage_bucket_in_env" attrs="{'invisible': 1}"/>
                         <field name="google_cloud_storage_bucket" attrs="{'invisible': [('is_google_cloud_storage_bucket_in_env', '=', True)]}"/>
                         <p attrs="{'invisible': [('is_google_cloud_storage_bucket_in_env', '=', False)]}">Defined in environment</p>
+                    </div>
+                    <div class="o_setting_left_pane">
+                    </div>
+                    <div class="o_setting_right_pane">
+                        <button type="object" name="check_google_cloud_storage" string="Check"/>
                     </div>
                 </div>
             </xpath>

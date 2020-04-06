@@ -4,18 +4,12 @@
 from odoo import api, fields, models
 from google.oauth2 import service_account
 from google.cloud import storage
+from base64 import b64decode, b64encode
 import json
 import os
-import logging
-
-_logger = logging.getLogger(__name__)
-
 
 GOOGLE_APPLICATION_CREDENTIALS = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
 GCS_BUCKETNAME = os.environ.get("GCS_BUCKETNAME")
-
-_logger.debug("1: {}".format(GOOGLE_APPLICATION_CREDENTIALS))
-_logger.debug("2: {}".format(GCS_BUCKETNAME))
 
 class ResConfigSettings(models.TransientModel):
 
@@ -42,7 +36,8 @@ class ResConfigSettings(models.TransientModel):
                 credentials = f.read()
         else:
             icp = self.env["ir.config_parameter"].sudo()
-            credentials = icp.get_param("google_cloud_storage.credentials")
+            credentials = b64decode(icp.get_param("google_cloud_storage.credentials")).decode('utf-8')
+
 
         if not credentials:
             raise Exception("No Google Cloud Storage credendtials given")
@@ -69,6 +64,16 @@ class ResConfigSettings(models.TransientModel):
 
         return client.get_bucket(bucket)
 
+    @api.multi
+    def check_google_cloud_storage(self):
+        # checks if everything works correctly
+
+        # 1. make sure bucket is available
+        bucket = self.get_google_cloud_storage_bucket()
+
+        # 2. upload test file over there
+        blob = bucket.blob("odoo/test")
+        blob.upload_from_string("test")
 
     @api.model
     def get_values(self):
@@ -80,24 +85,34 @@ class ResConfigSettings(models.TransientModel):
             is_google_cloud_storage_bucket_in_env = bool(GCS_BUCKETNAME),
         )
 
-        res.update(
-            google_cloud_storage_credentials=GOOGLE_APPLICATION_CREDENTIALS or icp.get_param(
-                "google_cloud_storage.credentials", ""
-            ),
-            google_cloud_storage_bucket=GCS_BUCKETNAME or icp.get_param(
-                "google_cloud_storage.bucket", ""
-            ),
-        )
+        if not GOOGLE_APPLICATION_CREDENTIALS:
+            res.update(
+                google_cloud_storage_credentials=icp.get_param(
+                    "google_cloud_storage.credentials", ""
+                )
+            )
+
+        if not GCS_BUCKETNAME:
+            res_update(
+                google_cloud_storage_bucket=GCS_BUCKETNAME or icp.get_param(
+                    "google_cloud_storage.bucket", ""
+                ),
+            )
+
         return res
 
     def set_values(self):
         super(ResConfigSettings, self).set_values()
         icp = self.env["ir.config_parameter"].sudo()
-        icp.set_param(
-            "google_cloud_storage.credentials",
-            self.google_cloud_storage_credentials or "{}",
-        )
-        icp.set_param(
-            "google_cloud_storage.bucket",
-            self.google_cloud_storage_bucket or "",
-        )
+
+        if not self.is_google_cloud_storage_credentials_in_env:
+            icp.set_param(
+                "google_cloud_storage.credentials",
+                self.google_cloud_storage_credentials or b64encode(b"{}"),
+            )
+
+        if not self.is_google_cloud_storage_bucket_in_env:
+            icp.set_param(
+                "google_cloud_storage.bucket",
+                self.google_cloud_storage_bucket or "",
+            )
