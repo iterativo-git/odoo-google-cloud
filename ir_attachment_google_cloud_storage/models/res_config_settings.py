@@ -93,7 +93,7 @@ class ResConfigSettings(models.TransientModel):
             )
 
         if not GCS_BUCKETNAME:
-            res_update(
+            res.update(
                 google_cloud_storage_bucket=GCS_BUCKETNAME or icp.get_param(
                     "google_cloud_storage.bucket", ""
                 ),
